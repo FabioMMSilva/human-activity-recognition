@@ -1,0 +1,67 @@
+
+---
+title: "Human Activity Recognition with Machine Learning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This project applies machine learning techniques to classify the manner in which individuals performed barbell lifts based on sensor data.
+
+## Data Preprocessing
+
+```{r}
+library(caret)
+library(randomForest)
+set.seed(42)
+
+# Load data
+training <- read.csv("pml-training.csv", na.strings = c("NA", "", "#DIV/0!"))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", "", "#DIV/0!"))
+
+# Remove near-zero variance predictors
+nzv <- nearZeroVar(training)
+training <- training[, -nzv]
+testing <- testing[, -nzv]
+
+# Remove columns with too many missing values
+threshold <- 0.95
+missing <- sapply(training, function(x) mean(is.na(x)))
+training <- training[, missing < threshold]
+testing <- testing[, names(training)[-ncol(training)]]
+
+# Remove identification columns
+training <- training[, !(names(training) %in% c("X", "user_name", "raw_timestamp_part_1",
+                                                "raw_timestamp_part_2", "cvtd_timestamp",
+                                                "new_window", "num_window"))]
+testing <- testing[, !(names(testing) %in% c("X", "user_name", "raw_timestamp_part_1",
+                                             "raw_timestamp_part_2", "cvtd_timestamp",
+                                             "new_window", "num_window"))]
+```
+
+## Model Training
+
+```{r}
+inTrain <- createDataPartition(training$classe, p=0.8, list=FALSE)
+trainSet <- training[inTrain,]
+valSet <- training[-inTrain,]
+
+model <- randomForest(classe ~ ., data=trainSet)
+predictions <- predict(model, valSet)
+confusionMatrix(predictions, valSet$classe)
+```
+
+## Final Predictions on Test Set
+
+```{r}
+final_predictions <- predict(model, testing)
+final_predictions
+```
+
+## Conclusion
+
+The Random Forest model achieved excellent performance and was used to classify 20 new test cases.
